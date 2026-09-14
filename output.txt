@@ -1,0 +1,11 @@
+sat
+Time taken: 0.37036824226379395 seconds
+Truck 1: n=2, p=0, s=7, c=1, u=0, z=False
+Truck 2: n=0, p=1, s=8, c=1, u=0, z=True
+Truck 3: n=1, p=1, s=0, c=1, u=7, z=True
+Truck 4: n=0, p=7, s=0, c=2, u=0, z=True
+Truck 5: n=1, p=2, s=0, c=1, u=6, z=True
+Truck 6: n=2, p=1, s=0, c=2, u=1, z=True
+D = 14
+Result for D >= 15: unsat
+Time taken: 0.1558835506439209 seconds
