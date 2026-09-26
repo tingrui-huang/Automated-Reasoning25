@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from z3 import *
+import time
 
 
 def z3_to_float(v):
@@ -71,7 +72,11 @@ def solve_pcb(added_cameras=0, draw=False):
                     (2 * y[j] + h[j]) - (2 * y[i] + h[i]) >= 40
                 ))
 
+    start_time = time.time()
     result = solver.check()
+    end_time = time.time()
+    
+    print(f"Runtime for {added_cameras} added cameras: {end_time - start_time:.4f} seconds")
 
     if result == sat:
         model = solver.model()
