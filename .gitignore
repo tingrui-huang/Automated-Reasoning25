@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Exercise 4 - generated verification output
+ex4/results/
+
+# Exercise 6 - large data files and generated outputs
+*.zip
+ex6/results/
+ex6/graph_learning_examples.py
+ex6/study_notes.md
+ex6/verify_reachability.py
+ex6/*_edges.csv
+ex6/*_nodes.csv
