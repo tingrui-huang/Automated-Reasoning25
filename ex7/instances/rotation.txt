@@ -1,0 +1,11 @@
+# Fully occupied 2x2 block whose robots rotate clockwise by one cell.
+# Allowed by constraints (6) and (7): nobody swaps, everybody follows.  Min T = 1.
+map
+..
+..
+end
+robot r1 0 0 1 0
+robot r2 1 0 1 1
+robot r3 1 1 0 1
+robot r4 0 1 0 0
+horizon 1

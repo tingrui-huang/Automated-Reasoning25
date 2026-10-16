@@ -1,0 +1,8 @@
+# Corridor without any bay: r1 and r2 would have to pass through each other.
+# Infeasible for every horizon T because of the vertex/edge collision constraints.
+map
+.....
+end
+robot r1 0 0 4 0
+robot r2 4 0 0 0
+horizon 10

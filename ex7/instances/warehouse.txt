@@ -1,0 +1,19 @@
+# Warehouse with six 2x3 shelf racks (#) and one-cell-wide aisles, 6 robots.
+map
+..........
+.##.##.##.
+.##.##.##.
+.##.##.##.
+..........
+.##.##.##.
+.##.##.##.
+.##.##.##.
+..........
+end
+robot r1 0 0 9 8
+robot r2 9 8 0 0
+robot r3 0 8 9 0
+robot r4 9 0 0 8
+robot r5 3 1 6 7
+robot r6 6 7 3 1
+horizon 24

@@ -1,0 +1,10 @@
+# One-cell-wide corridor with a single passing bay at (4,1).
+# r1 and r2 have to pass each other; r3 travels in the same direction as r2.
+map
+.........
+####.####
+end
+robot r1 0 0 8 0
+robot r2 8 0 0 0
+robot r3 7 0 1 0
+horizon 12
