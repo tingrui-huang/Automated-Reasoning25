@@ -52,7 +52,7 @@ def main():
 
     optimizer.add(Sum([If(z[t], 1, 0) for t in TRUCKS]) >= 5)
 
-    #additional constraints for (b)
+    #for b 
     for t in TRUCKS:
         optimizer.add(Implies(c[t] >= 1, u[t] >= 2))
 
@@ -83,7 +83,7 @@ def main():
 
     print("Results written to output_b.txt")
 
-    #prove that 11 is really the max
+    #prove 11
     optimizer.add(D >= 12)
     start_time = time.time()
     result_12 = optimizer.check()

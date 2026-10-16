@@ -78,7 +78,7 @@ def main():
 
     print("Results written to output.txt")
 
-    #prove that 14 is really the max
+    # prove
     optimizer.add(D >= 15)
     start_time = time.time()
     result_15 = optimizer.check()
