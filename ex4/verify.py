@@ -4,8 +4,7 @@ from z3 import And, Bool, If, Int, Solver, is_true, sat, unsat
 
 
 def verify_program(k_value, max_iterations=36):
-    # a starts at 1 and increases by at least 5 per iteration.
-    # After 36 iterations it is at least 181, so every run has ended.
+    # a grows by at least 5 each iteration, so 36 iterations cover every run.
     if max_iterations < 36:
         raise ValueError("Use at least 36 iterations to cover every run.")
 
@@ -17,13 +16,12 @@ def verify_program(k_value, max_iterations=36):
     solver.add(a[0] == 1, b[0] == 1)
 
     for i in range(max_iterations):
-        # The if branch uses b after its update.
+        # b is updated before a.
         if_step = And(b[i+1] == b[i] + 3,
                       a[i+1] == a[i] + 2 * b[i+1])
         else_step = And(b[i+1] == b[i] + a[i],
                         a[i+1] == a[i] + 5)
 
-        # Keep the final values when the loop has already ended.
         stopped = And(a[i+1] == a[i], b[i+1] == b[i])
         solver.add(If(a[i] < 180, If(choice[i], if_step, else_step), stopped))
 
@@ -57,7 +55,8 @@ def verify_program(k_value, max_iterations=36):
 if __name__ == "__main__":
     for k in range(11):
         status, elapsed, trace = verify_program(k)
-        print(f"\nk={k}, b={190 + k}: {status} (solver: {elapsed:.4f}s)")
+        print(f"\nFor k = {k}, the result is {status}. "
+              f"The crash condition is b = {190 + k}. Z3 took {elapsed:.4f} seconds.")
         if trace:
             for step, branch, ai, bi, ai1, bi1 in trace:
-                print(f"  {step + 1}: {branch}, ({ai}, {bi}) -> ({ai1}, {bi1})")
+                print(f"  Step {step + 1}: {branch}, ({ai}, {bi}) -> ({ai1}, {bi1})")

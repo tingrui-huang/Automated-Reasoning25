@@ -76,11 +76,12 @@ def solve_pcb(added_cameras=0, draw=False):
     result = solver.check()
     end_time = time.time()
     
-    print(f"Runtime for {added_cameras} added cameras: {end_time - start_time:.4f} seconds")
+    print(f"Z3 took {end_time - start_time:.4f} seconds. "
+          f"The number of additional cameras was {added_cameras}.")
 
     if result == sat:
         model = solver.model()
-        layout_str = "SAT (found a valid layout):\n"
+        layout_str = "SAT. A valid layout was found.\n"
         for i in range(N):
             brd = model.evaluate(board[i]).as_long()
             cx = z3_to_float(model.evaluate(x[i]))
@@ -92,9 +93,9 @@ def solve_pcb(added_cameras=0, draw=False):
             draw_solution(model, board, x, y, w, h, HOT, added_cameras, N)
         return layout_str
     elif result == unsat:
-        return "UNSAT (impossible to fit)"
+        return "UNSAT. No valid layout exists."
     else:
-        return "UNKNOWN"
+        return "UNKNOWN. Z3 could not decide this case."
 
 
 def draw_solution(model, board, x, y, w, h, HOT, added_cameras, N):
@@ -131,11 +132,11 @@ def draw_solution(model, board, x, y, w, h, HOT, added_cameras, N):
     plt.tight_layout()
     filename = f"layout_{added_cameras}_added_cameras.png"
     plt.savefig(filename, dpi=150)
-    print(f"Saved layout drawing to {filename}")
+    print(f"The layout was saved to {filename}.")
     plt.close()
 
 
 if __name__ == "__main__":
-    print("(a) 0 added cameras:\n", solve_pcb(0, draw=True))
-    print("(b) 1 added camera:\n", solve_pcb(1, draw=True))
-    print("(c) 3 added cameras:\n", solve_pcb(3, draw=True))
+    print("Part (a) has no additional cameras.\n", solve_pcb(0, draw=True))
+    print("Part (b) has one additional camera.\n", solve_pcb(1, draw=True))
+    print("Part (c) has three additional cameras.\n", solve_pcb(3, draw=True))
