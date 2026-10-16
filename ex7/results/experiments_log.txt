@@ -1,0 +1,16 @@
+| instance | grid | robots | obstacles | LB | min T | #checks | int: solver / total | bool: solver / total |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| random_8x8_n2_d10_s1 | 8x8 | 2 | 6 (10%) | 6 | 6 | 1 | 0.02 s / 0.12 s | 0.00 s / 0.41 s |
+| random_8x8_n4_d10_s1 | 8x8 | 4 | 6 (10%) | 7 | 7 | 1 | 0.09 s / 0.20 s | 0.00 s / 0.80 s |
+| random_12x12_n6_d20_s1 | 12x12 | 6 | 29 (20%) | 16 | 16 | 1 | 3.50 s / 4.22 s | 0.04 s / 4.84 s |
+| random_16x16_n10_d20_s1 | 16x16 | 10 | 51 (20%) | 18 | 18 | 1 | 11.71 s / 13.56 s | 0.66 s / 16.59 s |
+| random_16x16_n14_d20_s1 | 16x16 | 14 | 51 (20%) | 24 | 24 | 1 | timeout (> 120 s) | 4.83 s / 47.82 s |
+| random_20x20_n12_d25_s1 | 20x20 | 12 | 100 (25%) | 25 | 25 | 1 | 114.80 s / 123.13 s | 3.86 s / 61.33 s |
+| instance | LB | min T | #checks | incremental: solver / total | fresh solver per T: solver / total |
+|---|---:|---:|---:|---:|---:|
+| example | 12 | 12 | 1 | 0.75 s / 0.95 s | 1.29 s / 1.46 s |
+| corridor | 8 | 14 | 7 | 5.02 s / 5.27 s | 5.72 s / 7.02 s |
+| warehouse | 17 | 17 | 1 | 8.37 s / 9.62 s | 15.47 s / 16.54 s |
+
+written to D:\Users\trhua\courses\Automated-Reasoning25\ex7\experiments.md
+exit 0

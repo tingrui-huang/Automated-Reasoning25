@@ -1,98 +1,3 @@
-"""
-Exercise 7 -- Challenge: Multi-Robot Warehouse Planning (bounded MAPF) with z3.
-
-Problem
--------
-A warehouse is a W x H grid; the cells in the obstacle set O are blocked.  Robot
-r_i (i = 1..n) starts in cell s_i and has to be in its goal cell g_i at time T.
-Time is discrete, t = 0, 1, ..., T.  In one time step a robot moves to a
-horizontally/vertically adjacent cell or stays where it is.
-
-Decision problem  MAPF(W, H, O, R, T):
-    is there a plan  pos : R x {0..T} -> cells  such that
-    (1) pos(i,0) = s_i                                   initial position
-    (2) pos(i,T) = g_i                                   goal position
-    (3) pos(i,t+1) in {pos(i,t)} u adj(pos(i,t))          valid movement
-    (4) 0 <= x(i,t) < W,  0 <= y(i,t) < H                 boundaries
-    (5) pos(i,t) not in O                                obstacle avoidance
-    (6) i != j  =>  pos(i,t) != pos(j,t)                 vertex collision
-    (7) i != j  =>  not (pos(i,t) = pos(j,t+1) and pos(j,t) = pos(i,t+1))
-                                                         edge (swap) collision
-Optimisation problem:  the smallest T for which MAPF(..., T) is satisfiable
-(the minimum makespan).
-
-Encoding "int"  (default; this is the encoding described in the report)
---------------------------------------------------------------------------
-Variables  x_i^t, y_i^t : Int   for every robot i and time t  (2 n (T+1) ints).
-    (1)  x_i^0 = s_i.x  and  y_i^0 = s_i.y
-    (2)  x_i^T = g_i.x  and  y_i^T = g_i.y
-    (3)  OR_{(dx,dy) in {(0,0),(1,0),(-1,0),(0,1),(0,-1)}}
-             ( x_i^{t+1} = x_i^t + dx  and  y_i^{t+1} = y_i^t + dy )
-    (4)  0 <= x_i^t < W   and   0 <= y_i^t < H
-    (5)  for every (ox,oy) in O:   not ( x_i^t = ox  and  y_i^t = oy )
-    (6)  for i < j:   x_i^t != x_j^t  or  y_i^t != y_j^t
-    (7)  for i < j:   not ( x_i^t = x_j^{t+1} and y_i^t = y_j^{t+1} and
-                            x_j^t = x_i^{t+1} and y_j^t = y_i^{t+1} )
-A model gives the plan  pos(i,t) = (x_i^t, y_i^t)  directly.
-
-Encoding "bool"  (propositional alternative, used for the runtime comparison)
---------------------------------------------------------------------------
-Variables  at_{i,c}^t : Bool  for every robot i, free cell c and time t,
-meaning "robot i is in cell c at time t".  Obstacles and the boundaries get
-no variable at all, so (4) and (5) hold by construction.
-    exactly one cell:  OR_c at_{i,c}^t   and   AtMost(at_{i,c}^t : c, 1)
-    (1), (2)           unit clauses  at_{i,s_i}^0  and  at_{i,g_i}^T
-    (3)                at_{i,c}^t  ->  OR_{d in {c} u adj(c)} at_{i,d}^{t+1}
-    (6)                AtMost(at_{i,c}^t : i, 1)                 for every c
-    (7)                for every edge {u,v}:
-                       not ( OR_i (at_{i,u}^t and at_{i,v}^{t+1})  and
-                             OR_j (at_{j,v}^t and at_{j,u}^{t+1}) )
-
-Minimum makespan
-----------------
-If a plan for horizon T exists, a plan for T+1 exists as well (every robot
-stays in its goal one more step), so satisfiability is monotone in T and the
-first satisfiable horizon in an increasing search is the minimum.  The search
-starts at the lower bound  LB = max_i dist(s_i, g_i)  (BFS shortest path in the
-obstacle-free grid; a robot can never beat its own shortest path), so for all
-T < LB the instance is unsatisfiable without calling the solver.  If some goal
-is unreachable the instance is infeasible for every T.
-
-The search is incremental: the solver keeps the transition constraints for the
-time steps 0..T, the goal constraint (2) is added under push/pop, and after an
-UNSAT answer only the constraints for the next time layer are appended.
-
-Correctness
------------
-Every model of the formula corresponds to a plan that satisfies (1)-(7),
-because every constraint is a literal transcription of the corresponding
-requirement, and every valid plan yields a model (assign the variables the
-positions of the plan).  In addition, every plan returned by the solver is
-re-checked by `verify_plan`, an independent Python implementation of (1)-(7).
-
-Usage
------
-    python mapf.py INSTANCE                     feasibility for the horizon in the file
-    python mapf.py INSTANCE --T 12              feasibility for horizon 12
-    python mapf.py INSTANCE --min-makespan      smallest feasible horizon
-    options: --encoding {int,bool}  --no-edge-constraint  --no-incremental
-             --max-T N  --smt2 FILE.smt2  --plot FILE.png  --plan-out FILE.txt
-    python mapf.py --generate W H N DENSITY SEED --save FILE   random instance
-
-Input format (text file, '#' starts a comment)
-----------------------------------------------
-    map                 start of an ASCII map; rows are y = 0,1,..., columns x
-    ....#...            '.' free cell, '#' obstacle
-    end                 end of the map  (alternatively: width W / height H and
-                        obstacle X Y lines)
-    robot NAME SX SY GX GY     start (SX,SY), goal (GX,GY)
-    horizon T                  default planning horizon
-
-Output format
--------------
-    SAT/UNSAT per horizon with the solver time, and for a SAT answer a table
-    with one row per time step t and one column per robot holding (x,y).
-"""
 from __future__ import annotations
 
 import argparse
@@ -104,22 +9,18 @@ from collections import deque
 
 from z3 import (And, AtMost, Bool, Implies, Int, Not, Or, Solver, is_true, sat, unsat)
 
-MOVES = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]      # stay, right, left, down, up
+MOVES = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 
 
-# ---------------------------------------------------------------------------
-# Instances
-# ---------------------------------------------------------------------------
 class Instance:
     def __init__(self, name, W, H, obstacles, robots, horizon=None):
         self.name = name
         self.W, self.H = W, H
-        self.obstacles = set(obstacles)                  # {(x, y)}
-        self.robots = list(robots)                       # [(name, (sx,sy), (gx,gy))]
+        self.obstacles = set(obstacles)
+        self.robots = list(robots)
         self.horizon = horizon
         self.validate()
 
-    # -- basic grid helpers -------------------------------------------------
     def inside(self, c):
         return 0 <= c[0] < self.W and 0 <= c[1] < self.H
 
@@ -130,11 +31,9 @@ class Instance:
         return [(x, y) for y in range(self.H) for x in range(self.W) if (x, y) not in self.obstacles]
 
     def adjacent(self, c):
-        """Free cells reachable from c in one step, excluding c itself."""
         return [(c[0] + dx, c[1] + dy) for dx, dy in MOVES[1:] if self.free((c[0] + dx, c[1] + dy))]
 
     def edges(self):
-        """Undirected edges {u, v} between adjacent free cells (u < v)."""
         return [(u, v) for u in self.free_cells() for v in self.adjacent(u) if u < v]
 
     def bfs(self, src):
@@ -149,7 +48,6 @@ class Instance:
         return dist
 
     def lower_bound(self):
-        """max_i dist(s_i, g_i), or None if some goal is unreachable."""
         lb = 0
         for _, s, g in self.robots:
             d = self.bfs(s)
@@ -176,7 +74,6 @@ class Instance:
             starts.add(s)
             goals.add(g)
 
-    # -- text format --------------------------------------------------------
     @staticmethod
     def parse(path):
         W = H = horizon = None
@@ -184,7 +81,7 @@ class Instance:
         with open(path, encoding="utf-8") as f:
             for raw in f:
                 line = raw.split("#", 1)[0].strip() if rows is None else raw.rstrip("\n")
-                if rows is not None:                           # inside a map block
+                if rows is not None:
                     if line.strip() == "end":
                         H = len(rows)
                         W = max(len(r) for r in rows)
@@ -241,7 +138,6 @@ class Instance:
 
 
 def generate_random(W, H, n, density, seed, name=None):
-    """Random instance with the given obstacle density; all goals reachable."""
     rng = random.Random(seed)
     for _attempt in range(1000):
         cells = [(x, y) for y in range(H) for x in range(W)]
@@ -257,9 +153,6 @@ def generate_random(W, H, n, density, seed, name=None):
     raise RuntimeError("could not generate a solvable instance")
 
 
-# ---------------------------------------------------------------------------
-# Encoding 1: integer coordinates  (x_i^t, y_i^t)
-# ---------------------------------------------------------------------------
 class IntEncoding:
     name = "int"
 
@@ -267,8 +160,8 @@ class IntEncoding:
         self.inst = inst
         self.edge_constraint = edge_constraint
         self.solver = Solver()
-        self.x, self.y = [], []          # x[t][i], y[t][i]
-        self.T = -1                      # last time layer added
+        self.x, self.y = [], []
+        self.T = -1
 
     def extend_to(self, T):
         while self.T < T:
@@ -282,24 +175,24 @@ class IntEncoding:
         self.x.append(xs)
         self.y.append(ys)
         for i, (_, (sx, sy), _) in enumerate(inst.robots):
-            if t == 0:                                                      # (1)
+            if t == 0:
                 s.add(xs[i] == sx, ys[i] == sy)
-            s.add(xs[i] >= 0, xs[i] < inst.W, ys[i] >= 0, ys[i] < inst.H)   # (4)
-            for ox, oy in inst.obstacles:                                   # (5)
+            s.add(xs[i] >= 0, xs[i] < inst.W, ys[i] >= 0, ys[i] < inst.H)
+            for ox, oy in inst.obstacles:
                 s.add(Not(And(xs[i] == ox, ys[i] == oy)))
-            if t > 0:                                                       # (3)
+            if t > 0:
                 px, py = self.x[t - 1][i], self.y[t - 1][i]
                 s.add(Or([And(xs[i] == px + dx, ys[i] == py + dy) for dx, dy in MOVES]))
         for i in range(n):
             for j in range(i + 1, n):
-                s.add(Or(xs[i] != xs[j], ys[i] != ys[j]))                  # (6)
-                if t > 0 and self.edge_constraint:                          # (7)
+                s.add(Or(xs[i] != xs[j], ys[i] != ys[j]))
+                if t > 0 and self.edge_constraint:
                     px, py = self.x[t - 1], self.y[t - 1]
                     s.add(Not(And(px[i] == xs[j], py[i] == ys[j],
                                   px[j] == xs[i], py[j] == ys[i])))
         self.T = t
 
-    def goal(self, T):                                                      # (2)
+    def goal(self, T):
         return And([And(self.x[T][i] == gx, self.y[T][i] == gy)
                     for i, (_, _, (gx, gy)) in enumerate(self.inst.robots)])
 
@@ -308,9 +201,6 @@ class IntEncoding:
                  for t in range(T + 1)] for i in range(len(self.inst.robots))]
 
 
-# ---------------------------------------------------------------------------
-# Encoding 2: propositional occupancy variables  at_{i,c}^t
-# ---------------------------------------------------------------------------
 class BoolEncoding:
     name = "bool"
 
@@ -319,9 +209,9 @@ class BoolEncoding:
         self.edge_constraint = edge_constraint
         self.solver = Solver()
         self.cells = inst.free_cells()
-        self.succ = {c: [c] + inst.adjacent(c) for c in self.cells}   # stay or move
+        self.succ = {c: [c] + inst.adjacent(c) for c in self.cells}
         self.edge_list = inst.edges()
-        self.at = []                      # at[t][i][c] -> Bool
+        self.at = []
         self.T = -1
 
     def extend_to(self, T):
@@ -335,18 +225,18 @@ class BoolEncoding:
         self.at.append(layer)
         for i, (_, start, _) in enumerate(inst.robots):
             lits = list(layer[i].values())
-            s.add(Or(lits))                                                 # somewhere
-            s.add(AtMost(*lits, 1))                                         # at most one cell
+            s.add(Or(lits))
+            s.add(AtMost(*lits, 1))
             if t == 0:
-                s.add(layer[i][start])                                      # (1)
-            else:                                                           # (3)
+                s.add(layer[i][start])
+            else:
                 prev = self.at[t - 1][i]
                 for c in self.cells:
                     s.add(Implies(prev[c], Or([layer[i][d] for d in self.succ[c]])))
         if n > 1:
-            for c in self.cells:                                            # (6)
+            for c in self.cells:
                 s.add(AtMost(*[layer[i][c] for i in range(n)], 1))
-            if t > 0 and self.edge_constraint:                              # (7)
+            if t > 0 and self.edge_constraint:
                 prev = self.at[t - 1]
                 for u, v in self.edge_list:
                     u_to_v = Or([And(prev[i][u], layer[i][v]) for i in range(n)])
@@ -354,7 +244,7 @@ class BoolEncoding:
                     s.add(Not(And(u_to_v, v_to_u)))
         self.T = t
 
-    def goal(self, T):                                                      # (2)
+    def goal(self, T):
         return And([self.at[T][i][g] for i, (_, _, g) in enumerate(self.inst.robots)])
 
     def decode(self, model, T):
@@ -372,11 +262,7 @@ class BoolEncoding:
 ENCODINGS = {"int": IntEncoding, "bool": BoolEncoding}
 
 
-# ---------------------------------------------------------------------------
-# Solving
-# ---------------------------------------------------------------------------
 def check_horizon(enc, T, timeout_ms=None, smt2_path=None):
-    """SAT/UNSAT/unknown for horizon T on an (incrementally extended) encoding."""
     enc.extend_to(T)
     s = enc.solver
     if timeout_ms:
@@ -402,11 +288,6 @@ def solve_fixed(inst, T, encoding="int", edge_constraint=True, timeout_ms=None, 
 
 def min_makespan(inst, encoding="int", edge_constraint=True, max_T=60, incremental=True,
                  timeout_ms=None, log=print):
-    """Increase T from the BFS lower bound until the first SAT horizon.
-
-    Returns (T, plan, history) with history = [(T, result, seconds)], or
-    (None, None, history) if no plan exists up to max_T / the solver gave up.
-    """
     lb = inst.lower_bound()
     history = []
     if lb is None:
@@ -429,9 +310,6 @@ def min_makespan(inst, encoding="int", edge_constraint=True, max_T=60, increment
     return None, None, history
 
 
-# ---------------------------------------------------------------------------
-# Independent plan checker (constraints (1)-(7) in plain Python)
-# ---------------------------------------------------------------------------
 def verify_plan(inst, plan, T, edge_constraint=True):
     errors = []
     n = len(inst.robots)
@@ -463,9 +341,6 @@ def verify_plan(inst, plan, T, edge_constraint=True):
     return errors
 
 
-# ---------------------------------------------------------------------------
-# Output
-# ---------------------------------------------------------------------------
 def format_plan(inst, plan, T):
     names = [r[0] for r in inst.robots]
     width = max(9, max(len(nm) for nm in names) + 2)
@@ -476,7 +351,7 @@ def format_plan(inst, plan, T):
             x, y = plan[i][t]
             cell = f"({x},{y})"
             if t > 0 and plan[i][t] == plan[i][t - 1]:
-                cell += "*"                      # robot stayed in this step
+                cell += "*"
             row += f"{cell:<{width}}"
         out.append(row)
     out.append("(* = robot stayed in place during this step)")
@@ -496,19 +371,19 @@ def draw_plan(inst, plan, T, path, title=None):
     colors = colormaps["tab10"] if n <= 10 else colormaps["tab20"]
     for i, (name, s, g) in enumerate(inst.robots):
         col = colors(i % colors.N)
-        off = (i - (n - 1) / 2) * min(0.08, 0.5 / max(n, 1))      # small offset so paths don't hide each other
+        off = (i - (n - 1) / 2) * min(0.08, 0.5 / max(n, 1))
         xs = [c[0] + off for c in plan[i]]
         ys = [c[1] + off for c in plan[i]]
         ax.plot(xs, ys, "-", color=col, linewidth=2, alpha=0.85)
         ax.plot(xs[0], ys[0], "o", color=col, markersize=11, markeredgecolor="black")
         ax.plot(xs[-1], ys[-1], "*", color=col, markersize=16, markeredgecolor="black")
         ax.annotate(name, (xs[0], ys[0]), textcoords="offset points", xytext=(5, 5), fontsize=8, color=col)
-        for t in range(1, T + 1):                               # time stamps on moves
+        for t in range(1, T + 1):
             if plan[i][t] != plan[i][t - 1]:
                 ax.annotate(str(t), (xs[t], ys[t]), fontsize=6, color=col,
                             textcoords="offset points", xytext=(2, -8))
     ax.set_xlim(-0.5, inst.W - 0.5)
-    ax.set_ylim(inst.H - 0.5, -0.5)                            # y grows downwards, like the map
+    ax.set_ylim(inst.H - 0.5, -0.5)
     ax.set_xticks(range(inst.W))
     ax.set_yticks(range(inst.H))
     ax.set_aspect("equal")
@@ -520,11 +395,8 @@ def draw_plan(inst, plan, T, path, title=None):
     plt.close(fig)
 
 
-# ---------------------------------------------------------------------------
-# Command line
-# ---------------------------------------------------------------------------
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(description="Multi-robot warehouse planning (bounded MAPF) with z3.")
     ap.add_argument("instance", nargs="?", help="instance file")
     ap.add_argument("--T", type=int, help="planning horizon (default: the one in the file)")
     ap.add_argument("--min-makespan", action="store_true", help="search the smallest feasible horizon")

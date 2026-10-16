@@ -1,0 +1,3 @@
+schedule #1 (capacity 130): 21 moves, last arrival t=284, first village runs dry at t=320 -> OK
+schedule #2 (capacity 150): 9 moves, last arrival t=122, first village runs dry at t=158; loop state repeats, period 98 -> OK
+schedule #3 (capacity 150): 9 moves, last arrival t=128, first village runs dry at t=158; loop state repeats, period 98 -> OK

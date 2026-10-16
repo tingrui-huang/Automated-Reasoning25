@@ -1,28 +1,14 @@
-"""
-Exercise 7 -- runtime experiments for the multi-robot warehouse planner.
-
-Table 1: random instances of growing size (grid, robots, obstacle density);
-         minimum-makespan search with the integer encoding and with the
-         propositional encoding.  The generated instances are stored in
-         instances/random/ so that every number can be reproduced with
-             python mapf.py instances/random/<name>.txt --min-makespan [--encoding bool]
-Table 2: incremental solving (one solver, push/pop of the goal constraint)
-         versus a fresh solver per horizon, on the hand-made instances.
-
-Usage:  python experiments.py [--seeds 1 2 3] [--timeout 120] [--out experiments.md]
-"""
 import argparse
 import functools
 import os
 import time
 
-print = functools.partial(print, flush=True)      # show progress even when redirected to a file
+print = functools.partial(print, flush=True)
 
 from mapf import Instance, generate_random, min_makespan
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# (W, H, robots, obstacle density)
 CONFIGS = [
     (8, 8, 2, 0.10),
     (8, 8, 4, 0.10),
